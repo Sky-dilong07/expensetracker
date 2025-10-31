@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker</title>
+    <style>
+        * { box-sizing: border-box; font-family: "Poppins", sans-serif; margin: 0; padding: 0; }
+        body { background: #f8fafc; color: #1e293b; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+        header {
+          width: 100%; padding: 1.5rem 2rem;
+          background: #2563eb; color: white; text-align: center;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        header h1 { font-weight: 600; }
+
+        main { width: 90%; max-width: 900px; margin-top: 2rem; }
+
+        section {
+          background: white; border-radius: 12px; padding: 1.5rem;
+          margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        h2 { color: #2563eb; margin-bottom: 1rem; }
+
+        form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        input, select, textarea {
+          width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px;
+          border: 1px solid #cbd5e1; font-size: 0.95rem;
+        }
+
+        button {
+          padding: 0.7rem 1.2rem; border: none; border-radius: 8px;
+          background: #2563eb; color: white; font-weight: 600;
+          cursor: pointer; transition: 0.2s;
+        }
+        button:hover { background: #1d4ed8; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+        th { background: #eff6ff; color: #2563eb; }
+        tr:hover { background: #f1f5f9; }
+
+        .total {
+          font-size: 1.2rem; font-weight: 600; color: #2563eb;
+          text-align: right; margin-top: 1rem;
+        }
+
+        @media(max-width: 600px) {
+          form { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>💸 Expense Tracker Dashboard</h1>
+</header>
+
+<main>
+    <section id="add-expense">
+        <h2>Add New Expense</h2>
+        <form id="expenseForm">
+            <input type="text" id="title" placeholder="Title" required />
+            <input type="number" id="amount" placeholder="Amount" step="0.01" required />
+            <input type="date" id="date" required />
+            <input type="text" id="categoryName" placeholder="Category Name" required />
+            <input type="text" id="paymentMethod" placeholder="Payment Method" />
+            <textarea id="note" placeholder="Note (optional)"></textarea>
+            <button type="submit">Add Expense</button>
+        </form>
+    </section>
+
+    <section id="expenses">
+        <h2>Expense List</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Title</th>
+                <th>Amount (₹)</th>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Payment</th>
+                <th>Note</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="expenseTableBody"></tbody>
+        </table>
+        <div class="total">Total Expense: ₹<span id="totalExpense">0.00</span></div>
+    </section>
+</main>
+
+<script>
+    const API_BASE = "http://localhost:8083/api/expenses";
+
+    async function loadExpenses() {
+      const res = await fetch(API_BASE);
+      const data = await res.json();
+      const tbody = document.getElementById("expenseTableBody");
+      tbody.innerHTML = "";
+      let total = 0;
+      data.forEach(exp => {
+        total += exp.amount;
+        const row = `
+          <tr>
+            <td>${exp.title}</td>
+            <td>${exp.amount.toFixed(2)}</td>
+            <td>${exp.date}</td>
+            <td>${exp.categoryName}</td>
+            <td>${exp.paymentMethod}</td>
+            <td>${exp.note || "-"}</td>
+            <td><button onclick="deleteExpense(${exp.id})" style="background:#ef4444;">🗑️</button></td>
+          </tr>`;
+        tbody.insertAdjacentHTML("beforeend", row);
+      });
+      document.getElementById("totalExpense").textContent = total.toFixed(2);
+    }
+
+    document.getElementById("expenseForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const expense = {
+        title: document.getElementById("title").value,
+        amount: parseFloat(document.getElementById("amount").value),
+        date: document.getElementById("date").value,
+        categoryName: document.getElementById("categoryName").value,
+        paymentMethod: document.getElementById("paymentMethod").value,
+        note: document.getElementById("note").value
+      };
+      const res = await fetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(expense)
+      });
+      if (res.ok) {
+        alert("Expense added successfully!");
+        e.target.reset();
+        loadExpenses();
+      } else {
+        alert("Failed to add expense. Check category exists in backend.");
+      }
+    });
+
+    async function deleteExpense(id) {
+      if (!confirm("Delete this expense?")) return;
+      await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
+      loadExpenses();
+    }
+
+    loadExpenses();
+</script>
+</body>
+</html>
